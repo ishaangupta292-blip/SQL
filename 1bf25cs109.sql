@@ -1,0 +1,157 @@
+CREATE TABLE SUPPLIERS (
+    SID INT PRIMARY KEY,
+    SNAME VARCHAR(30),
+    CITY VARCHAR(30)
+);
+
+CREATE TABLE PARTS (
+    PID INT PRIMARY KEY,
+    PNAME VARCHAR(30),
+    COLOR VARCHAR(20)
+);
+
+CREATE TABLE CATALOG (
+    SID INT,
+    PID INT,
+    COST INT,
+    PRIMARY KEY (SID, PID),
+    FOREIGN KEY (SID) REFERENCES SUPPLIERS(SID),
+    FOREIGN KEY (PID) REFERENCES PARTS(PID)
+);
+INSERT INTO SUPPLIERS VALUES
+(10001, 'Acme Widget', 'Bangalore'),
+(10002, 'Johns', 'Kolkata'),
+(10003, 'Vimal', 'Mumbai'),
+(10004, 'Reliance', 'Delhi');
+
+INSERT INTO PARTS VALUES
+(20001, 'Book', 'Red'),
+(20002, 'Pen', 'Red'),
+(20003, 'Pencil', 'Green'),
+(20004, 'Mobile', 'Green'),
+(20005, 'Charger', 'Black');
+
+INSERT INTO CATALOG VALUES
+(10001, 20001, 10),
+(10001, 20002, 10),
+(10001, 20003, 30),
+(10001, 20004, 10),
+(10001, 20005, 10),
+(10002, 20001, 10),
+(10002, 20002, 20),
+(10003, 20003, 30),
+(10004, 20003, 40);
+SELECT DISTINCT P.PNAME
+FROM PARTS P
+JOIN CATALOG C
+ON P.PID = C.PID;
+SELECT S.SNAME
+FROM SUPPLIERS S
+WHERE NOT EXISTS (
+    SELECT *
+    FROM PARTS P
+    WHERE NOT EXISTS (
+        SELECT *
+        FROM CATALOG C
+        WHERE C.SID = S.SID
+        AND C.PID = P.PID
+    )
+);
+SELECT S.SNAME
+FROM SUPPLIERS S
+WHERE NOT EXISTS (
+    SELECT *
+    FROM PARTS P
+    WHERE P.COLOR = 'Red'
+    AND NOT EXISTS (
+        SELECT *
+        FROM CATALOG C
+        WHERE C.SID = S.SID
+        AND C.PID = P.PID
+    )
+);
+SELECT P.PNAME
+FROM PARTS P
+JOIN CATALOG C
+ON P.PID = C.PID
+JOIN SUPPLIERS S
+ON C.SID = S.SID
+WHERE S.SNAME = 'Acme Widget'
+AND NOT EXISTS (
+    SELECT *
+    FROM CATALOG C2
+    WHERE C2.PID = P.PID
+    AND C2.SID <> S.SID
+);
+SELECT DISTINCT C1.SID
+FROM CATALOG C1
+WHERE C1.COST > (
+    SELECT AVG(C2.COST)
+    FROM CATALOG C2
+    WHERE C2.PID = C1.PID
+);
+SELECT P.PNAME, S.SNAME, C.COST
+FROM CATALOG C
+JOIN SUPPLIERS S
+ON C.SID = S.SID
+JOIN PARTS P
+ON C.PID = P.PID
+WHERE C.COST = (
+    SELECT MAX(C2.COST)
+    FROM CATALOG C2
+    WHERE C2.PID = C.PID
+);
+SELECT S.sname, P.pname, C.cost
+FROM Suppliers S
+JOIN Catalog C ON S.sid = C.sid
+JOIN Parts P ON C.pid = P.pid
+WHERE C.cost = (SELECT MAX(cost) FROM Catalog);
+SELECT S.sid, S.sname
+FROM Suppliers S
+WHERE S.sid NOT IN (
+    SELECT C.sid
+    FROM Catalog C
+    JOIN Parts P ON C.pid = P.pid
+    WHERE P.color = 'Red'
+);
+SELECT S.sid, S.sname, COALESCE(SUM(C.cost), 0) AS total_value
+FROM Suppliers S
+LEFT JOIN Catalog C ON S.sid = C.sid
+GROUP BY S.sid, S.sname;
+SELECT S.sid, S.sname
+FROM Suppliers S
+JOIN Catalog C ON S.sid = C.sid
+WHERE C.cost < 20
+GROUP BY S.sid, S.sname
+HAVING COUNT(C.pid) >= 2;
+SELECT P.pid, P.pname, S.sname, C.cost
+FROM Catalog C
+JOIN Suppliers S ON C.sid = S.sid
+JOIN Parts P ON C.pid = P.pid
+WHERE C.cost = (
+    SELECT MIN(C2.cost)
+    FROM Catalog C2
+    WHERE C2.pid = C.pid
+);
+DELIMITER //
+
+CREATE TRIGGER SetDefaultCost
+BEFORE INSERT ON Catalog
+FOR EACH ROW
+BEGIN
+    IF NEW.cost IS NULL THEN
+        SET NEW.cost = 10;
+    END IF;
+END //
+
+DELIMITER ;
+
+
+
+
+
+
+
+
+
+
